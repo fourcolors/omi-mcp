@@ -9,6 +9,9 @@
 const { spawn } = require('child_process');
 const readline = require('readline');
 
+// Default test user ID
+const TEST_USER_ID = 'test-user-123';
+
 // Start the MCP server process
 const mcpServer = spawn('node', ['./dist/mcp-server.js'], {
 	stdio: ['pipe', 'pipe', process.stderr],
@@ -48,6 +51,7 @@ const exampleRequests = {
 		type: 'request',
 		method: 'tools.read_omi_conversations',
 		params: {
+			user_id: TEST_USER_ID,
 			limit: 5,
 		},
 	},
@@ -56,6 +60,7 @@ const exampleRequests = {
 		type: 'request',
 		method: 'tools.read_omi_memories',
 		params: {
+			user_id: TEST_USER_ID,
 			limit: 5,
 		},
 	},
@@ -64,6 +69,7 @@ const exampleRequests = {
 		type: 'request',
 		method: 'tools.create_omi_conversation',
 		params: {
+			user_id: TEST_USER_ID,
 			text: 'This is a test conversation',
 			text_source: 'message',
 		},
@@ -110,6 +116,7 @@ function showMenu() {
 // Give the server a moment to start up
 setTimeout(() => {
 	console.log('MCP test client started. Press Ctrl+C to exit.');
+	console.log(`Using test user ID: ${TEST_USER_ID}`);
 	showMenu();
 }, 1000);
 
