@@ -220,7 +220,7 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 	/**
 	 * Create new memories in Omi for a specific user. Requires either 'text' (for extraction) or 'memories' (for direct creation).
 	 * @param {string} [user_id=USER_ID] - The user ID to create memories for (defaults to predefined USER_ID).
-	 * @param {string} [text] - The text content from which memories will be extracted. Provide this OR 'memories'.
+	 * @param {string} [text] - The text content from which memories will be extracted. Provide this AND optional 'memories' array.
 	 * @param {Array<Object>} [memories] - An array of explicit memory objects to be created directly. Provide this OR 'text'.
 	 * @param {string} [text_source="other"] - Source of the text content (options: "email", "social_post", "other") - defaults to "other".
 	 * @param {string} [text_source_spec] - Additional specification about the source (optional).
@@ -230,7 +230,7 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 		user_id: string = USER_ID,
 		text?: string,
 		memories?: Array<{ content: string; tags?: string[] }>,
-		text_source: string = 'other',
+		text_source?: string,
 		text_source_spec?: string,
 	): Promise<string> {
 		try {
