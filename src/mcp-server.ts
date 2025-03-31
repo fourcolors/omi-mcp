@@ -35,11 +35,11 @@ const server = new McpServer({
 server.tool(
 	'read_omi_conversations',
 	{
-		user_id: z.string(),
-		limit: z.number().optional(),
-		offset: z.number().optional(),
-		include_discarded: z.boolean().optional(),
-		statuses: z.string().optional(),
+		user_id: z.string().describe('The user ID to fetch conversations for. Required.'),
+		limit: z.number().optional().describe('Maximum number of conversations to return. Optional, max: 1000, default: 100.'),
+		offset: z.number().optional().describe('Number of conversations to skip for pagination. Optional, default: 0.'),
+		include_discarded: z.boolean().optional().describe('Whether to include discarded conversations. Optional, default: false.'),
+		statuses: z.string().optional().describe('Comma-separated list of statuses to filter conversations by. Optional.'),
 	},
 	async ({ user_id, limit, offset, include_discarded, statuses }) => {
 		try {
@@ -111,9 +111,9 @@ server.tool(
 server.tool(
 	'read_omi_memories',
 	{
-		user_id: z.string(),
-		limit: z.number().optional(),
-		offset: z.number().optional(),
+		user_id: z.string().describe('The user ID to fetch memories for. Required.'),
+		limit: z.number().optional().describe('Maximum number of memories to return. Optional, max: 1000, default: 100.'),
+		offset: z.number().optional().describe('Number of memories to skip for pagination. Optional, default: 0.'),
 	},
 	async ({ user_id, limit, offset }) => {
 		try {
@@ -186,19 +186,22 @@ server.tool(
 server.tool(
 	'create_omi_conversation',
 	{
-		text: z.string(),
-		user_id: z.string(),
-		text_source: z.enum(['audio_transcript', 'message', 'other_text']),
-		started_at: z.string().optional(),
-		finished_at: z.string().optional(),
-		language: z.string().default('en'),
+		text: z.string().describe('The full text content of the conversation. Required.'),
+		user_id: z.string().describe('The user ID to create the conversation for. Required.'),
+		text_source: z
+			.enum(['audio_transcript', 'message', 'other_text'])
+			.describe('Source of the text content. Required. Options: "audio_transcript", "message", "other_text".'),
+		started_at: z.string().optional().describe('When the conversation/event started in ISO 8601 format. Optional.'),
+		finished_at: z.string().optional().describe('When the conversation/event ended in ISO 8601 format. Optional.'),
+		language: z.string().default('en').describe('Language code (e.g., "en" for English). Optional, defaults to "en".'),
 		geolocation: z
 			.object({
-				latitude: z.number(),
-				longitude: z.number(),
+				latitude: z.number().describe('Latitude coordinate. Required when geolocation is provided.'),
+				longitude: z.number().describe('Longitude coordinate. Required when geolocation is provided.'),
 			})
-			.optional(),
-		text_source_spec: z.string().optional(),
+			.optional()
+			.describe('Location data for the conversation. Optional object containing latitude and longitude.'),
+		text_source_spec: z.string().optional().describe('Additional specification about the source. Optional.'),
 	},
 	async ({ text, user_id, text_source, started_at, finished_at, language, geolocation, text_source_spec }) => {
 		try {
@@ -257,18 +260,22 @@ server.tool(
 server.tool(
 	'create_omi_memories',
 	{
-		user_id: z.string(),
-		text: z.string().optional(),
+		user_id: z.string().describe('The user ID to create memories for. Required.'),
+		text: z
+			.string()
+			.optional()
+			.describe('The text content from which memories will be extracted. Either this or memories must be provided.'),
 		memories: z
 			.array(
 				z.object({
-					content: z.string(),
-					tags: z.array(z.string()).optional(),
+					content: z.string().describe('The content of the memory. Required.'),
+					tags: z.array(z.string().describe('A tag for the memory.')).optional().describe('Optional tags for the memory.'),
 				})
 			)
-			.optional(),
-		text_source: z.string().optional(),
-		text_source_spec: z.string().optional(),
+			.optional()
+			.describe('An array of explicit memory objects to be created directly. Either this or text must be provided.'),
+		text_source: z.string().optional().describe('Source of the text content. Optional. Options: "email", "social_post", "other".'),
+		text_source_spec: z.string().optional().describe('Additional specification about the source. Optional.'),
 	},
 	async ({ user_id, text, memories, text_source, text_source_spec }) => {
 		try {
