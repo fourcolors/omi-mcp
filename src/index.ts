@@ -125,7 +125,9 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 
 	/**
 	 * Retrieve memories from Omi for a specific user.
-	 * @param user_id {string} The user ID to fetch memories for (defaults to predefined USER_ID).
+	 * @param {string} [user_id=USER_ID] - The user ID to fetch memories for (defaults to predefined USER_ID).
+	 * @param {number} [limit=100] - Maximum number of memories to return (optional, max: 1000, default: 100).
+	 * @param {number} [offset=0] - Number of memories to skip for pagination (optional, default: 0).
 	 * @return {Promise<string>} a JSON response containing the array of memories. Memories look like this:
 	 * {
 	 *   "id": "string",
@@ -134,24 +136,38 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 	 *   "tags": ["string"]
 	 * }
 	 */
-	async read_omi_memories(user_id: string = USER_ID) {
+	async read_omi_memories(user_id: string = USER_ID, limit?: number, offset?: number) {
 		try {
 			// Access environment variables for authentication
 			const apiKey = this.env.API_KEY;
 			const appId = this.env.APP_ID;
 
-			console.log(`Using appId: ${appId}`); // Add logging for debugging
-			console.log(`User ID: ${user_id}`); // Add logging for debugging
+			console.log(`Using appId: ${appId}`);
+			console.log(`User ID: ${user_id}`);
 
 			if (!apiKey || !appId) {
 				throw new Error('API_KEY or APP_ID not found in environment variables');
 			}
 
-			const url = `https://api.omi.me/v2/integrations/${appId}/memories?uid=${user_id}`;
-			console.log(`Fetching from URL: ${url}`); // Add logging for debugging
+			// Construct URL with query parameters
+			const url = new URL(`https://api.omi.me/v2/integrations/${appId}/memories`);
+			const params = new URLSearchParams();
+			params.append('uid', user_id);
+
+			if (typeof limit === 'number') {
+				params.append('limit', String(limit));
+			}
+			if (typeof offset === 'number') {
+				params.append('offset', String(offset));
+			}
+
+			url.search = params.toString();
+
+			const fetchUrl = url.toString();
+			console.log(`Fetching from URL: ${fetchUrl}`);
 
 			// Make authenticated request to Omi API
-			const response = await fetch(url, {
+			const response = await fetch(fetchUrl, {
 				method: 'GET',
 				headers: {
 					Authorization: `Bearer ${apiKey}`,
@@ -159,7 +175,7 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 				},
 			});
 
-			console.log(`Response status: ${response.status}`); // Add logging for debugging
+			console.log(`Response status: ${response.status}`);
 
 			if (!response.ok) {
 				const errorText = await response.text();
