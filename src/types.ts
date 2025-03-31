@@ -12,7 +12,6 @@ export interface Memory {
 export interface Env {
 	API_KEY: string;
 	APP_ID: string;
-	SHARED_SECRET: string;
 }
 
 export interface Geolocation {
