@@ -1,13 +1,45 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { z } from 'zod';
 import { ConversationsResponse, MemoriesResponse } from './types';
+
+// Declare logStream at module level
+let logStream: fs.WriteStream | undefined;
+
+// Set up logging with safer path in home directory
+const homedir = os.homedir();
+const logDir = path.join(homedir, '.omi-mcp-logs');
+try {
+	if (!fs.existsSync(logDir)) {
+		fs.mkdirSync(logDir, { recursive: true });
+	}
+
+	const logFile = path.join(logDir, 'mcp-server.log');
+	logStream = fs.createWriteStream(logFile, { flags: 'a' });
+} catch (error) {
+	// Fallback to console logging if file logging fails
+	console.error(`Error setting up log file: ${error}`);
+}
 
 // Define log function
 function log(message: string) {
 	const timestamp = new Date().toISOString();
-	console.log(`[${timestamp}] ${message}`);
+	// Log to stderr instead of stdout to avoid interfering with MCP JSON messages
+	console.error(`[${timestamp}] ${message}`);
+
+	// Try to log to file if stream exists
+	try {
+		if (logStream && typeof logStream.write === 'function') {
+			const logMessage = `[${timestamp}] ${message}\n`;
+			logStream.write(logMessage);
+		}
+	} catch (error) {
+		console.error(`Failed to write to log file: ${error}`);
+	}
 }
 
 // Load environment variables from .env file
@@ -273,10 +305,7 @@ server.tool(
 	'create_omi_memories',
 	{
 		user_id: z.string().describe('The user ID to create memories for'),
-		text: z
-			.string()
-			.optional()
-			.describe('The text content from which memories will be extracted. Either this or memories must be provided.'),
+		text: z.string().describe('The text content from which memories will be extracted. Either this or memories must be provided.'),
 		memories: z
 			.array(
 				z.object({
@@ -337,10 +366,15 @@ server.tool(
 // Main function to start the server
 async function main() {
 	try {
+		// Log startup message to stderr before establishing transport
+		console.error(`[${new Date().toISOString()}] Starting MCP server...`);
+
 		// Start receiving messages on stdin and sending messages on stdout
 		const transport = new StdioServerTransport();
 		await server.connect(transport);
-		log('MCP server started');
+
+		// Log success message to stderr and file
+		log('MCP server started successfully');
 	} catch (error) {
 		log(`Error starting MCP server: ${error}`);
 		process.exit(1);
@@ -349,3 +383,26 @@ async function main() {
 
 // Run the main function
 main();
+
+// Handle cleanup on exit
+process.on('exit', () => {
+	if (logStream) {
+		try {
+			logStream.end();
+			console.error('Log stream closed successfully');
+		} catch (err) {
+			console.error(`Error closing log stream: ${err}`);
+		}
+	}
+});
+
+// Handle other termination signals
+process.on('SIGINT', () => {
+	console.error('Received SIGINT signal, shutting down...');
+	process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+	console.error('Received SIGTERM signal, shutting down...');
+	process.exit(0);
+});
