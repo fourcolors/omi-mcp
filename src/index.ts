@@ -195,6 +195,69 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 	}
 
 	/**
+	 * Create a new conversation in Omi for a specific user.
+	 * @param {string} text - The full text content of the conversation
+	 * @param {string} [user_id=USER_ID] - The user ID to create the conversation for (defaults to predefined USER_ID)
+	 * @param {string} [started_at] - When the conversation started (ISO 8601) - defaults to current time
+	 * @param {string} [finished_at] - When the conversation ended (ISO 8601) - defaults to started_at + 5min
+	 * @param {string} [language="en"] - Language code (e.g., "en" for English)
+	 * @param {Object} [geolocation] - Location data {latitude: number, longitude: number}
+	 * @param {string} [text_source="audio_transcript"] - Source of text content
+	 * @param {string} [text_source_spec] - Additional source specification
+	 * @return {Promise<string>} Empty JSON object on success
+	 */
+	async create_omi_conversation(
+		text: string,
+		user_id: string = USER_ID,
+		started_at?: string,
+		finished_at?: string,
+		language: string = 'en',
+		geolocation?: { latitude: number; longitude: number },
+		text_source: string = 'audio_transcript',
+		text_source_spec?: string
+	): Promise<string> {
+		try {
+			const apiKey = this.env.API_KEY;
+			const appId = this.env.APP_ID;
+
+			if (!apiKey || !appId) {
+				throw new Error('API_KEY or APP_ID not found in environment variables');
+			}
+
+			const url = `https://api.omi.me/v2/integrations/${appId}/user/conversations?uid=${user_id}`;
+
+			const body = {
+				text,
+				started_at,
+				finished_at,
+				language,
+				geolocation,
+				text_source,
+				text_source_spec,
+			};
+
+			const response = await fetch(url, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${apiKey}`,
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(body),
+			});
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				throw new Error(`Failed to create conversation: ${response.status} ${response.statusText} - ${errorText}`);
+			}
+
+			return '{}';
+		} catch (error) {
+			console.error('Error creating conversation:', error);
+			throw new Error(`Failed to create conversation: ${error instanceof Error ? error.message : String(error)}`);
+		}
+	}
+
+	/**
 	 * @ignore
 	 **/
 	async fetch(request: Request): Promise<Response> {
