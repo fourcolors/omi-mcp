@@ -1,32 +1,25 @@
 {
 	"name": "omi-mcp",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"private": true,
 	"scripts": {
-		"deploy": "workers-mcp docgen src/index.ts && wrangler deploy",
-		"dev": "wrangler dev",
-		"start": "wrangler dev",
-		"test": "vitest",
-		"cf-typegen": "wrangler types",
 		"build": "tsc",
-		"mcp": "node --enable-source-maps ./dist/mcp-server.js",
-		"mcp:dev": "concurrently \"tsc --watch\" \"nodemon --watch dist/**/*.js dist/mcp-server.js\"",
-		"mcp:test": "node test-mcp-client.js"
+		"start": "node --enable-source-maps ./dist/mcp-server.js",
+		"dev": "concurrently \"tsc --watch\" \"nodemon --watch dist/**/*.js dist/mcp-server.js\"",
+		"test": "node test-mcp-client.js",
+		"clean": "rm -rf dist",
+		"rebuild": "npm run clean && npm run build"
 	},
 	"devDependencies": {
-		"@cloudflare/vitest-pool-workers": "^0.7.5",
-		"@cloudflare/workers-types": "^4.20250327.0",
 		"@types/node": "^20.12.12",
 		"concurrently": "^8.2.2",
 		"nodemon": "^3.1.0",
 		"typescript": "^5.5.2",
-		"vitest": "~3.0.7",
-		"wrangler": "^4.6.0"
+		"vitest": "~3.0.7"
 	},
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.1.1",
 		"dotenv": "^16.4.5",
-		"workers-mcp": "^0.0.13",
 		"zod": "^3.22.4"
 	}
 }

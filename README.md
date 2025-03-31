@@ -5,7 +5,7 @@ This project provides a Model Context Protocol (MCP) server for interacting with
 ## Setup
 
 1. Clone the repository
-2. Install dependencies with `pnpm install`
+2. Install dependencies with `npm install`
 3. Create a `.env` file with the following variables:
    ```
    API_KEY=your_api_key
@@ -18,13 +18,13 @@ This project provides a Model Context Protocol (MCP) server for interacting with
 ### Building the Server
 
 ```bash
-pnpm run build
+npm run build
 ```
 
 ### Running the Server
 
 ```bash
-pnpm run mcp
+npm run start
 ```
 
 ### Development Mode
@@ -32,7 +32,7 @@ pnpm run mcp
 For development with hot-reloading:
 
 ```bash
-pnpm run mcp:dev
+npm run dev
 ```
 
 ### Testing the Server
@@ -40,7 +40,7 @@ pnpm run mcp:dev
 A simple test client is included to interact with the MCP server. After building the project, run:
 
 ```bash
-pnpm run mcp:test
+npm run test
 ```
 
 Or directly:
@@ -51,6 +51,14 @@ Or directly:
 
 This will start the MCP server and provide an interactive menu to test the available tools.
 
+### Clean and Rebuild
+
+To clean the build directory and rebuild from scratch:
+
+```bash
+npm run rebuild
+```
+
 ## Configuration with Claude and Cursor
 
 ### Claude Configuration
@@ -60,7 +68,7 @@ To use this MCP server with Claude via Anthropic Console or API:
 1. Start the MCP server locally:
 
    ```bash
-   pnpm run mcp
+   npm run start
    ```
 
 2. When setting up your Claude conversation, configure the MCP connection:
@@ -107,7 +115,7 @@ To use this MCP server with Cursor:
 1. Start the MCP server in a terminal:
 
    ```bash
-   pnpm run mcp
+   npm run start
    ```
 
 2. In Cursor, go to Settings > Extensions > MCP Servers
