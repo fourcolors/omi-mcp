@@ -2,21 +2,13 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import dotenv from 'dotenv';
 import { z } from 'zod';
+import { ConversationsResponse, MemoriesResponse } from './types';
 
 // Load environment variables from .env file
 dotenv.config();
 
 const API_KEY = process.env.API_KEY || '';
 const APP_ID = process.env.APP_ID || '';
-
-// Define types for the API responses
-interface ConversationsResponse {
-	conversations?: Array<any>;
-}
-
-interface MemoriesResponse {
-	memories?: Array<any>;
-}
 
 if (!API_KEY || !APP_ID) {
 	console.error('API_KEY or APP_ID not found in environment variables');
