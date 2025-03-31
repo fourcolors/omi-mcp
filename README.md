@@ -189,3 +189,54 @@ Parameters:
   - `tags` (array of strings, optional): Tags for the memory
 - `text_source` (string, optional): Source of the text content
 - `text_source_spec` (string, optional): Additional specification about the source
+
+## Testing
+
+To test the MCP server, you can use the provided test client:
+
+```bash
+node test-mcp-client.js
+```
+
+This will start an interactive test client that allows you to:
+
+1. Get conversations
+2. Get memories
+3. Create a conversation
+4. Quit
+
+The test client uses a default test user ID (`test-user-123`) for all operations.
+
+## Logging
+
+The MCP server includes built-in logging functionality that writes to both the console and a log file. This is useful for debugging and monitoring server activity.
+
+### Log File Location
+
+Logs are written to `logs/mcp-server.log` in your project directory. The log file includes timestamps and detailed information about:
+
+- Server startup and shutdown
+- All API requests and responses
+- Error messages and stack traces
+- API calls to Omi
+- Request parameters and response data
+
+### Viewing Logs
+
+You can view the logs in real-time using the `tail` command:
+
+```bash
+tail -f logs/mcp-server.log
+```
+
+This will show you live updates as the server processes requests and interacts with the Omi API.
+
+### Log Format
+
+Each log entry follows this format:
+
+```
+[2024-03-21T12:34:56.789Z] Log message here
+```
+
+The timestamp is in ISO 8601 format, making it easy to correlate events and debug issues.

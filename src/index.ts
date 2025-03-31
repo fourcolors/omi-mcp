@@ -1,17 +1,39 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
 import { z } from 'zod';
 import { ConversationsResponse, MemoriesResponse } from './types';
 
 // Load environment variables from .env file
 dotenv.config();
 
+// Set up logging
+const logDir = path.join(process.cwd(), 'logs');
+if (!fs.existsSync(logDir)) {
+	fs.mkdirSync(logDir);
+}
+
+const logFile = path.join(logDir, 'mcp-server.log');
+const logStream = fs.createWriteStream(logFile, { flags: 'a' });
+
+function log(message: string) {
+	const timestamp = new Date().toISOString();
+	const logMessage = `[${timestamp}] ${message}\n`;
+	logStream.write(logMessage);
+	console.log(message); // Also log to console
+}
+
+// User ID for testing
+const USER_ID = 'PIVswRdbkOQimAqwxKTO0oH5EFO2';
+
+// Get API credentials from environment variables
 const API_KEY = process.env.API_KEY || '';
 const APP_ID = process.env.APP_ID || '';
 
 if (!API_KEY || !APP_ID) {
-	console.error('API_KEY or APP_ID not found in environment variables');
+	log('API_KEY or APP_ID not found in environment variables');
 	process.exit(1);
 }
 
@@ -35,16 +57,16 @@ const server = new McpServer({
 server.tool(
 	'read_omi_conversations',
 	{
-		user_id: z.string().describe('The user ID to fetch conversations for. Required.'),
-		limit: z.number().optional().describe('Maximum number of conversations to return. Optional, max: 1000, default: 100.'),
-		offset: z.number().optional().describe('Number of conversations to skip for pagination. Optional, default: 0.'),
-		include_discarded: z.boolean().optional().describe('Whether to include discarded conversations. Optional, default: false.'),
-		statuses: z.string().optional().describe('Comma-separated list of statuses to filter conversations by. Optional.'),
+		user_id: z.string().default(USER_ID),
+		limit: z.number().optional(),
+		offset: z.number().optional(),
+		include_discarded: z.boolean().optional(),
+		statuses: z.string().optional(),
 	},
 	async ({ user_id, limit, offset, include_discarded, statuses }) => {
 		try {
-			console.log(`Using appId: ${APP_ID}`);
-			console.log(`User ID: ${user_id}`);
+			log(`Using appId: ${APP_ID}`);
+			log(`User ID: ${user_id}`);
 
 			// Construct URL with query parameters
 			const url = new URL(`https://api.omi.me/v2/integrations/${APP_ID}/conversations`);
@@ -67,7 +89,7 @@ server.tool(
 			url.search = params.toString();
 
 			const fetchUrl = url.toString();
-			console.log(`Fetching from URL: ${fetchUrl}`);
+			log(`Fetching from URL: ${fetchUrl}`);
 
 			const response = await fetch(fetchUrl, {
 				method: 'GET',
@@ -77,7 +99,7 @@ server.tool(
 				},
 			});
 
-			console.log(`Response status: ${response.status}`);
+			log(`Response status: ${response.status}`);
 
 			if (!response.ok) {
 				const errorText = await response.text();
@@ -85,7 +107,7 @@ server.tool(
 			}
 
 			const data = (await response.json()) as ConversationsResponse;
-			console.log('Data received');
+			log('Data received');
 
 			const conversations = data.conversations || [];
 
@@ -93,7 +115,7 @@ server.tool(
 				content: [{ type: 'text', text: JSON.stringify({ conversations }) }],
 			};
 		} catch (error) {
-			console.error('Error fetching conversations:', error);
+			log(`Error fetching conversations: ${error}`);
 			throw new Error(`Failed to read conversations: ${error instanceof Error ? error.message : String(error)}`);
 		}
 	}
@@ -111,14 +133,14 @@ server.tool(
 server.tool(
 	'read_omi_memories',
 	{
-		user_id: z.string().describe('The user ID to fetch memories for. Required.'),
-		limit: z.number().optional().describe('Maximum number of memories to return. Optional, max: 1000, default: 100.'),
-		offset: z.number().optional().describe('Number of memories to skip for pagination. Optional, default: 0.'),
+		user_id: z.string().default(USER_ID),
+		limit: z.number().optional(),
+		offset: z.number().optional(),
 	},
 	async ({ user_id, limit, offset }) => {
 		try {
-			console.log(`Using appId: ${APP_ID}`);
-			console.log(`User ID: ${user_id}`);
+			log(`Using appId: ${APP_ID}`);
+			log(`User ID: ${user_id}`);
 
 			// Construct URL with query parameters
 			const url = new URL(`https://api.omi.me/v2/integrations/${APP_ID}/memories`);
@@ -135,7 +157,7 @@ server.tool(
 			url.search = params.toString();
 
 			const fetchUrl = url.toString();
-			console.log(`Fetching from URL: ${fetchUrl}`);
+			log(`Fetching from URL: ${fetchUrl}`);
 
 			const response = await fetch(fetchUrl, {
 				method: 'GET',
@@ -145,7 +167,7 @@ server.tool(
 				},
 			});
 
-			console.log(`Response status: ${response.status}`);
+			log(`Response status: ${response.status}`);
 
 			if (!response.ok) {
 				const errorText = await response.text();
@@ -153,7 +175,7 @@ server.tool(
 			}
 
 			const data = (await response.json()) as MemoriesResponse;
-			console.log('Data received');
+			log('Data received');
 
 			const memories = data.memories || [];
 
@@ -161,7 +183,7 @@ server.tool(
 				content: [{ type: 'text', text: JSON.stringify({ memories }) }],
 			};
 		} catch (error) {
-			console.error('Error fetching memories:', error);
+			log(`Error fetching memories: ${error}`);
 			throw new Error(`Failed to read memories: ${error instanceof Error ? error.message : String(error)}`);
 		}
 	}
@@ -186,8 +208,8 @@ server.tool(
 server.tool(
 	'create_omi_conversation',
 	{
-		text: z.string().describe('The full text content of the conversation. Required.'),
-		user_id: z.string().describe('The user ID to create the conversation for. Required.'),
+		text: z.string(),
+		user_id: z.string().default(USER_ID),
 		text_source: z
 			.enum(['audio_transcript', 'message', 'other_text'])
 			.describe('Source of the text content. Required. Options: "audio_transcript", "message", "other_text".'),
@@ -220,6 +242,9 @@ server.tool(
 			if (geolocation) body.geolocation = geolocation;
 			if (text_source_spec) body.text_source_spec = text_source_spec;
 
+			log(`Creating conversation with URL: ${url}`);
+			log(`Request body: ${JSON.stringify(body)}`);
+
 			const response = await fetch(url, {
 				method: 'POST',
 				headers: {
@@ -228,6 +253,8 @@ server.tool(
 				},
 				body: JSON.stringify(body),
 			});
+
+			log(`Response status: ${response.status}`);
 
 			if (!response.ok) {
 				const errorText = await response.text();
@@ -238,7 +265,7 @@ server.tool(
 				content: [{ type: 'text', text: '{}' }],
 			};
 		} catch (error) {
-			console.error('Error creating conversation:', error);
+			log(`Error creating conversation: ${error}`);
 			throw new Error(`Failed to create conversation: ${error instanceof Error ? error.message : String(error)}`);
 		}
 	}
@@ -260,7 +287,7 @@ server.tool(
 server.tool(
 	'create_omi_memories',
 	{
-		user_id: z.string().describe('The user ID to create memories for. Required.'),
+		user_id: z.string().default(USER_ID),
 		text: z
 			.string()
 			.optional()
@@ -293,6 +320,9 @@ server.tool(
 			if (text_source) body.text_source = text_source;
 			if (text_source_spec) body.text_source_spec = text_source_spec;
 
+			log(`Creating memories with URL: ${url}`);
+			log(`Request body: ${JSON.stringify(body)}`);
+
 			const response = await fetch(url, {
 				method: 'POST',
 				headers: {
@@ -301,6 +331,8 @@ server.tool(
 				},
 				body: JSON.stringify(body),
 			});
+
+			log(`Response status: ${response.status}`);
 
 			if (!response.ok) {
 				const errorText = await response.text();
@@ -311,7 +343,7 @@ server.tool(
 				content: [{ type: 'text', text: '{}' }],
 			};
 		} catch (error) {
-			console.error('Error creating memory:', error);
+			log(`Error creating memory: ${error}`);
 			throw new Error(`Failed to create memory: ${error instanceof Error ? error.message : String(error)}`);
 		}
 	}
@@ -323,12 +355,17 @@ async function main() {
 		// Start receiving messages on stdin and sending messages on stdout
 		const transport = new StdioServerTransport();
 		await server.connect(transport);
-		console.log('MCP server started');
+		log('MCP server started');
 	} catch (error) {
-		console.error('Error starting MCP server:', error);
+		log(`Error starting MCP server: ${error}`);
 		process.exit(1);
 	}
 }
 
 // Run the main function
 main();
+
+// Handle cleanup on exit
+process.on('exit', () => {
+	logStream.end();
+});
