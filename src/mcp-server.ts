@@ -6,7 +6,6 @@ import { z } from 'zod';
 // Load environment variables from .env file
 dotenv.config();
 
-const USER_ID = 'PIVswRdbkOQimAqwxKTO0oH5EFO2';
 const API_KEY = process.env.API_KEY || '';
 const APP_ID = process.env.APP_ID || '';
 
@@ -34,7 +33,7 @@ const server = new McpServer({
  * Retrieve conversations from Omi for a specific user, with optional filters for pagination and filtering.
  *
  * @param {Object} params - The parameters for the conversation request
- * @param {string} [params.user_id=USER_ID] - The user ID to fetch conversations for (defaults to predefined USER_ID)
+ * @param {string} params.user_id - The user ID to fetch conversations for
  * @param {number} [params.limit] - Maximum number of conversations to return (max: 1000, default: 100)
  * @param {number} [params.offset] - Number of conversations to skip for pagination (default: 0)
  * @param {boolean} [params.include_discarded] - Whether to include discarded conversations (default: false)
@@ -44,7 +43,7 @@ const server = new McpServer({
 server.tool(
 	'read_omi_conversations',
 	{
-		user_id: z.string().default(USER_ID),
+		user_id: z.string(),
 		limit: z.number().optional(),
 		offset: z.number().optional(),
 		include_discarded: z.boolean().optional(),
@@ -112,7 +111,7 @@ server.tool(
  * Retrieve memories from Omi for a specific user, with optional pagination.
  *
  * @param {Object} params - The parameters for the memories request
- * @param {string} [params.user_id=USER_ID] - The user ID to fetch memories for (defaults to predefined USER_ID)
+ * @param {string} params.user_id - The user ID to fetch memories for
  * @param {number} [params.limit] - Maximum number of memories to return (max: 1000, default: 100)
  * @param {number} [params.offset] - Number of memories to skip for pagination (default: 0)
  * @returns {Promise<Object>} A response containing the array of memories in JSON format
@@ -120,7 +119,7 @@ server.tool(
 server.tool(
 	'read_omi_memories',
 	{
-		user_id: z.string().default(USER_ID),
+		user_id: z.string(),
 		limit: z.number().optional(),
 		offset: z.number().optional(),
 	},
@@ -181,7 +180,7 @@ server.tool(
  *
  * @param {Object} params - The parameters for creating a conversation
  * @param {string} params.text - The full text content of the conversation
- * @param {string} [params.user_id=USER_ID] - The user ID to create the conversation for (defaults to predefined USER_ID)
+ * @param {string} params.user_id - The user ID to create the conversation for
  * @param {string} params.text_source - Required source of the text content (options: "audio_transcript", "message", "other_text")
  * @param {string} [params.started_at] - When the conversation/event started (ISO 8601 format)
  * @param {string} [params.finished_at] - When the conversation/event ended (ISO 8601 format)
@@ -196,7 +195,7 @@ server.tool(
 	'create_omi_conversation',
 	{
 		text: z.string(),
-		user_id: z.string().default(USER_ID),
+		user_id: z.string(),
 		text_source: z.enum(['audio_transcript', 'message', 'other_text']),
 		started_at: z.string().optional(),
 		finished_at: z.string().optional(),
@@ -254,7 +253,7 @@ server.tool(
  * Create new memories in Omi for a specific user. Requires either 'text' (for extraction) or 'memories' (for direct creation).
  *
  * @param {Object} params - The parameters for creating memories
- * @param {string} [params.user_id=USER_ID] - The user ID to create memories for (defaults to predefined USER_ID)
+ * @param {string} params.user_id - The user ID to create memories for
  * @param {string} [params.text] - The text content from which memories will be extracted
  * @param {Array<Object>} [params.memories] - An array of explicit memory objects to be created directly
  * @param {string} params.memories[].content - The content of the memory
@@ -266,7 +265,7 @@ server.tool(
 server.tool(
 	'create_omi_memories',
 	{
-		user_id: z.string().default(USER_ID),
+		user_id: z.string(),
 		text: z.string().optional(),
 		memories: z
 			.array(
