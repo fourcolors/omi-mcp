@@ -10,7 +10,6 @@ This project provides a Model Context Protocol (MCP) server for interacting with
    ```
    API_KEY=your_api_key
    APP_ID=your_app_id
-   SHARED_SECRET=your_shared_secret
    ```
 
 ## Usage
@@ -49,7 +48,7 @@ Or directly:
 ./test-mcp-client.js
 ```
 
-This will start the MCP server and provide an interactive menu to test the available tools.
+This will start the MCP server and provide an interactive menu to test the available tools. The test client uses a default test user ID (`test-user-123`) for all operations.
 
 ### Clean and Rebuild
 
@@ -80,7 +79,7 @@ To use this MCP server with Claude via Anthropic Console or API:
    			{
    				"type": "stdio",
    				"executable": {
-   					"path": "/path/to/your/omi-mcp-local/dist/mcp-server.js",
+   					"path": "/path/to/your/omi-mcp-local/dist/index.js",
    					"args": []
    				}
    			}
@@ -123,7 +122,7 @@ To use this MCP server with Cursor:
 3. Add a new MCP server with these settings:
 
    - Name: Omi API
-   - URL: stdio:/path/to/your/omi-mcp-local/dist/mcp-server.js
+   - URL: stdio:/path/to/your/omi-mcp-local/dist/index.js
    - Enable the server
 
 4. Now you can use the Omi tools directly within Cursor. For example:
@@ -190,12 +189,3 @@ Parameters:
   - `tags` (array of strings, optional): Tags for the memory
 - `text_source` (string, optional): Source of the text content
 - `text_source_spec` (string, optional): Additional specification about the source
-
-## Migration from Cloudflare Worker
-
-This project was converted from a Cloudflare Worker to a local MCP server using stdio communication. The conversion process involved:
-
-1. Setting up environment variables in a `.env` file instead of using Wrangler's `.dev.vars`
-2. Converting each Cloudflare Worker method to an MCP tool
-3. Implementing the StdioServerTransport to handle communication via stdin/stdout
-4. Updating the build configuration to emit JavaScript files

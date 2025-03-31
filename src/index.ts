@@ -1,38 +1,53 @@
-import { WorkerEntrypoint } from 'cloudflare:workers';
-import { ProxyToSelf } from 'workers-mcp';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import dotenv from 'dotenv';
+import { z } from 'zod';
+import { ConversationsResponse, MemoriesResponse } from './types';
 
-const USER_ID = 'PIVswRdbkOQimAqwxKTO0oH5EFO2';
+// Load environment variables from .env file
+dotenv.config();
 
-export default class OmiWorker extends WorkerEntrypoint<Env> {
-	/**
-	 * Retrieve conversations from Omi for a specific user, with optional filters for pagination and filtering.
-	 * @param {string} [user_id=USER_ID] - The user ID to fetch conversations for (defaults to predefined USER_ID).
-	 * @param {number} [limit=100] - Maximum number of conversations to return (optional, max: 1000, default: 100).
-	 * @param {number} [offset=0] - Number of conversations to skip for pagination (optional, default: 0).
-	 * @param {boolean} [include_discarded=false] - Whether to include discarded conversations (optional, default: false).
-	 * @param {string} [statuses] - Comma-separated list of statuses to filter conversations by (optional).
-	 * @return {Promise<string>} A JSON string containing the array of conversations.
-	 */
-	async read_omi_conversations(
-		user_id: string = USER_ID,
-		limit?: number,
-		offset?: number,
-		include_discarded?: boolean,
-		statuses?: string
-	): Promise<string> {
+const API_KEY = process.env.API_KEY || '';
+const APP_ID = process.env.APP_ID || '';
+
+if (!API_KEY || !APP_ID) {
+	console.error('API_KEY or APP_ID not found in environment variables');
+	process.exit(1);
+}
+
+// Create an MCP server
+const server = new McpServer({
+	name: 'Omi-MCP',
+	version: '1.0.0',
+});
+
+/**
+ * Retrieve conversations from Omi for a specific user, with optional filters for pagination and filtering.
+ *
+ * @param {Object} params - The parameters for the conversation request
+ * @param {string} params.user_id - The user ID to fetch conversations for
+ * @param {number} [params.limit] - Maximum number of conversations to return (max: 1000, default: 100)
+ * @param {number} [params.offset] - Number of conversations to skip for pagination (default: 0)
+ * @param {boolean} [params.include_discarded] - Whether to include discarded conversations (default: false)
+ * @param {string} [params.statuses] - Comma-separated list of statuses to filter conversations by
+ * @returns {Promise<Object>} A response containing the array of conversations in JSON format
+ */
+server.tool(
+	'read_omi_conversations',
+	{
+		user_id: z.string().describe('The user ID to fetch conversations for. Required.'),
+		limit: z.number().optional().describe('Maximum number of conversations to return. Optional, max: 1000, default: 100.'),
+		offset: z.number().optional().describe('Number of conversations to skip for pagination. Optional, default: 0.'),
+		include_discarded: z.boolean().optional().describe('Whether to include discarded conversations. Optional, default: false.'),
+		statuses: z.string().optional().describe('Comma-separated list of statuses to filter conversations by. Optional.'),
+	},
+	async ({ user_id, limit, offset, include_discarded, statuses }) => {
 		try {
-			const apiKey = this.env.API_KEY;
-			const appId = this.env.APP_ID;
-
-			console.log(`Using appId: ${appId}`);
+			console.log(`Using appId: ${APP_ID}`);
 			console.log(`User ID: ${user_id}`);
 
-			if (!apiKey || !appId) {
-				throw new Error('API_KEY or APP_ID not found in environment variables');
-			}
-
 			// Construct URL with query parameters
-			const url = new URL(`https://api.omi.me/v2/integrations/${appId}/conversations`);
+			const url = new URL(`https://api.omi.me/v2/integrations/${APP_ID}/conversations`);
 			const params = new URLSearchParams();
 			params.append('uid', user_id);
 
@@ -57,7 +72,7 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 			const response = await fetch(fetchUrl, {
 				method: 'GET',
 				headers: {
-					Authorization: `Bearer ${apiKey}`,
+					Authorization: `Bearer ${API_KEY}`,
 					'Content-Type': 'application/json',
 				},
 			});
@@ -69,42 +84,44 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 				throw new Error(`Failed to fetch conversations: ${response.status} ${response.statusText} - ${errorText}`);
 			}
 
-			// Assuming the response structure matches ConversationsResponse
 			const data = (await response.json()) as ConversationsResponse;
-			console.log('Data:', data);
+			console.log('Data received');
 
 			const conversations = data.conversations || [];
-			console.log('Conversations:', conversations);
 
-			return JSON.stringify({ conversations });
+			return {
+				content: [{ type: 'text', text: JSON.stringify({ conversations }) }],
+			};
 		} catch (error) {
 			console.error('Error fetching conversations:', error);
 			throw new Error(`Failed to read conversations: ${error instanceof Error ? error.message : String(error)}`);
 		}
 	}
+);
 
-	/**
-	 * Retrieve memories from Omi for a specific user.
-	 * @param {string} [user_id=USER_ID] - The user ID to fetch memories for (defaults to predefined USER_ID).
-	 * @param {number} [limit=100] - Maximum number of memories to return (optional, max: 1000, default: 100).
-	 * @param {number} [offset=0] - Number of memories to skip for pagination (optional, default: 0).
-	 * @return {Promise<string>} a JSON response containing the array of memories.
-	 */
-	async read_omi_memories(user_id: string = USER_ID, limit?: number, offset?: number): Promise<string> {
+/**
+ * Retrieve memories from Omi for a specific user, with optional pagination.
+ *
+ * @param {Object} params - The parameters for the memories request
+ * @param {string} params.user_id - The user ID to fetch memories for
+ * @param {number} [params.limit] - Maximum number of memories to return (max: 1000, default: 100)
+ * @param {number} [params.offset] - Number of memories to skip for pagination (default: 0)
+ * @returns {Promise<Object>} A response containing the array of memories in JSON format
+ */
+server.tool(
+	'read_omi_memories',
+	{
+		user_id: z.string().describe('The user ID to fetch memories for. Required.'),
+		limit: z.number().optional().describe('Maximum number of memories to return. Optional, max: 1000, default: 100.'),
+		offset: z.number().optional().describe('Number of memories to skip for pagination. Optional, default: 0.'),
+	},
+	async ({ user_id, limit, offset }) => {
 		try {
-			// Access environment variables for authentication
-			const apiKey = this.env.API_KEY;
-			const appId = this.env.APP_ID;
-
-			console.log(`Using appId: ${appId}`);
+			console.log(`Using appId: ${APP_ID}`);
 			console.log(`User ID: ${user_id}`);
 
-			if (!apiKey || !appId) {
-				throw new Error('API_KEY or APP_ID not found in environment variables');
-			}
-
 			// Construct URL with query parameters
-			const url = new URL(`https://api.omi.me/v2/integrations/${appId}/memories`);
+			const url = new URL(`https://api.omi.me/v2/integrations/${APP_ID}/memories`);
 			const params = new URLSearchParams();
 			params.append('uid', user_id);
 
@@ -120,11 +137,10 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 			const fetchUrl = url.toString();
 			console.log(`Fetching from URL: ${fetchUrl}`);
 
-			// Make authenticated request to Omi API
 			const response = await fetch(fetchUrl, {
 				method: 'GET',
 				headers: {
-					Authorization: `Bearer ${apiKey}`,
+					Authorization: `Bearer ${API_KEY}`,
 					'Content-Type': 'application/json',
 				},
 			});
@@ -136,60 +152,60 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 				throw new Error(`Failed to fetch memories: ${response.status} ${response.statusText} - ${errorText}`);
 			}
 
-			// Assuming the response structure matches MemoriesResponse
 			const data = (await response.json()) as MemoriesResponse;
-			console.log('Data:', data);
-			const memories = data.memories || [];
-			console.log('Memories:', memories);
+			console.log('Data received');
 
-			return JSON.stringify({ memories });
+			const memories = data.memories || [];
+
+			return {
+				content: [{ type: 'text', text: JSON.stringify({ memories }) }],
+			};
 		} catch (error) {
 			console.error('Error fetching memories:', error);
 			throw new Error(`Failed to read memories: ${error instanceof Error ? error.message : String(error)}`);
 		}
 	}
+);
 
-	/**
-	 * Create a new conversation in Omi for a specific user.
-	 * @param {string} text - The full text content of the conversation.
-	 * @param {string} [user_id=USER_ID] - The user ID to create the conversation for (defaults to predefined USER_ID).
-	 * @param {string} text_source - Required source of the text content (options: "audio_transcript", "message", "other_text").
-	 * @param {string} [started_at] - When the conversation/event started (ISO 8601 format) - defaults to current time if not provided.
-	 * @param {string} [finished_at] - When the conversation/event ended (ISO 8601 format) - defaults to started_at + 5 minutes if not provided.
-	 * @param {string} [language="en"] - Language code (e.g., "en" for English) - defaults to "en" if not provided.
-	 * @param {object} [geolocation] - Location data for the conversation.
-	 * @param {number} [geolocation.latitude] - Latitude coordinate.
-	 * @param {number} [geolocation.longitude] - Longitude coordinate.
-	 * @param {string} [text_source_spec] - Additional specification about the source (optional).
-	 * @return {Promise<string>} Empty JSON object on success (e.g., "{}" will be returned when conversation is created successfully).
-	 */
-	async create_omi_conversation(
-		text: string,
-		user_id: string = USER_ID,
-		text_source: 'audio_transcript' | 'message' | 'other_text',
-		started_at?: string,
-		finished_at?: string,
-		language: string = 'en',
-		geolocation?: { latitude: number; longitude: number },
-		text_source_spec?: string
-	): Promise<string> {
+/**
+ * Create a new conversation in Omi for a specific user.
+ *
+ * @param {Object} params - The parameters for creating a conversation
+ * @param {string} params.text - The full text content of the conversation
+ * @param {string} params.user_id - The user ID to create the conversation for
+ * @param {string} params.text_source - Required source of the text content (options: "audio_transcript", "message", "other_text")
+ * @param {string} [params.started_at] - When the conversation/event started (ISO 8601 format)
+ * @param {string} [params.finished_at] - When the conversation/event ended (ISO 8601 format)
+ * @param {string} [params.language="en"] - Language code (e.g., "en" for English) - defaults to "en"
+ * @param {Object} [params.geolocation] - Location data for the conversation
+ * @param {number} params.geolocation.latitude - Latitude coordinate
+ * @param {number} params.geolocation.longitude - Longitude coordinate
+ * @param {string} [params.text_source_spec] - Additional specification about the source
+ * @returns {Promise<Object>} Empty response on success
+ */
+server.tool(
+	'create_omi_conversation',
+	{
+		text: z.string().describe('The full text content of the conversation. Required.'),
+		user_id: z.string().describe('The user ID to create the conversation for. Required.'),
+		text_source: z
+			.enum(['audio_transcript', 'message', 'other_text'])
+			.describe('Source of the text content. Required. Options: "audio_transcript", "message", "other_text".'),
+		started_at: z.string().optional().describe('When the conversation/event started in ISO 8601 format. Optional.'),
+		finished_at: z.string().optional().describe('When the conversation/event ended in ISO 8601 format. Optional.'),
+		language: z.string().default('en').describe('Language code (e.g., "en" for English). Optional, defaults to "en".'),
+		geolocation: z
+			.object({
+				latitude: z.number().describe('Latitude coordinate. Required when geolocation is provided.'),
+				longitude: z.number().describe('Longitude coordinate. Required when geolocation is provided.'),
+			})
+			.optional()
+			.describe('Location data for the conversation. Optional object containing latitude and longitude.'),
+		text_source_spec: z.string().optional().describe('Additional specification about the source. Optional.'),
+	},
+	async ({ text, user_id, text_source, started_at, finished_at, language, geolocation, text_source_spec }) => {
 		try {
-			const apiKey = this.env.API_KEY;
-			const appId = this.env.APP_ID;
-
-			if (!apiKey || !appId) {
-				throw new Error('API_KEY or APP_ID not found in environment variables');
-			}
-
-			// Validate required parameters
-			if (!text) {
-				throw new Error('text is required');
-			}
-			if (!text_source) {
-				throw new Error('text_source is required');
-			}
-
-			const url = `https://api.omi.me/v2/integrations/${appId}/user/conversations?uid=${user_id}`;
+			const url = `https://api.omi.me/v2/integrations/${APP_ID}/user/conversations?uid=${user_id}`;
 
 			// Construct the body with required parameters
 			const body: Record<string, any> = {
@@ -207,7 +223,7 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 			const response = await fetch(url, {
 				method: 'POST',
 				headers: {
-					Authorization: `Bearer ${apiKey}`,
+					Authorization: `Bearer ${API_KEY}`,
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify(body),
@@ -218,64 +234,69 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 				throw new Error(`Failed to create conversation: ${response.status} ${response.statusText} - ${errorText}`);
 			}
 
-			// Omi API might return an empty body or a specific success object.
-			// Returning an empty JSON string as per the original doc comment.
-			return '{}';
+			return {
+				content: [{ type: 'text', text: '{}' }],
+			};
 		} catch (error) {
 			console.error('Error creating conversation:', error);
 			throw new Error(`Failed to create conversation: ${error instanceof Error ? error.message : String(error)}`);
 		}
 	}
+);
 
-	/**
-	 * Create new memories in Omi for a specific user. Requires either 'text' (for extraction) or 'memories' (for direct creation).
-	 * @param {string} [user_id=USER_ID] - The user ID to create memories for (defaults to predefined USER_ID).
-	 * @param {string} [text] - The text content from which memories will be extracted. Provide this AND optional 'memories' array.
-	 * @param {Array<Object>} [memories] - An array of explicit memory objects to be created directly. Provide this OR 'text'.
-	 * @param {string} [text_source="other"] - Source of the text content (options: "email", "social_post", "other") - defaults to "other".
-	 * @param {string} [text_source_spec] - Additional specification about the source (optional).
-	 * @return {Promise<string>} Empty JSON object on success (e.g., "{}" will be returned when memories are created successfully).
-	 */
-	async create_omi_memories(
-		user_id: string = USER_ID,
-		text?: string,
-		memories?: Array<{ content: string; tags?: string[] }>,
-		text_source?: string,
-		text_source_spec?: string
-	): Promise<string> {
+/**
+ * Create new memories in Omi for a specific user. Requires either 'text' (for extraction) or 'memories' (for direct creation).
+ *
+ * @param {Object} params - The parameters for creating memories
+ * @param {string} params.user_id - The user ID to create memories for
+ * @param {string} [params.text] - The text content from which memories will be extracted
+ * @param {Array<Object>} [params.memories] - An array of explicit memory objects to be created directly
+ * @param {string} params.memories[].content - The content of the memory
+ * @param {Array<string>} [params.memories[].tags] - Optional tags for the memory
+ * @param {string} [params.text_source] - Source of the text content (options: "email", "social_post", "other")
+ * @param {string} [params.text_source_spec] - Additional specification about the source
+ * @returns {Promise<Object>} Empty response on success
+ */
+server.tool(
+	'create_omi_memories',
+	{
+		user_id: z.string().describe('The user ID to create memories for. Required.'),
+		text: z
+			.string()
+			.optional()
+			.describe('The text content from which memories will be extracted. Either this or memories must be provided.'),
+		memories: z
+			.array(
+				z.object({
+					content: z.string().describe('The content of the memory. Required.'),
+					tags: z.array(z.string().describe('A tag for the memory.')).optional().describe('Optional tags for the memory.'),
+				})
+			)
+			.optional()
+			.describe('An array of explicit memory objects to be created directly. Either this or text must be provided.'),
+		text_source: z.string().optional().describe('Source of the text content. Optional. Options: "email", "social_post", "other".'),
+		text_source_spec: z.string().optional().describe('Additional specification about the source. Optional.'),
+	},
+	async ({ user_id, text, memories, text_source, text_source_spec }) => {
 		try {
-			const apiKey = this.env.API_KEY;
-			const appId = this.env.APP_ID;
-
-			if (!apiKey || !appId) {
-				throw new Error('API_KEY or APP_ID not found in environment variables');
-			}
-
-			// Runtime check (optional but good practice, TypeScript handles compile-time)
+			// Runtime check
 			if (!text && !memories) {
-				// This case should be prevented by the TypeScript types, but belt-and-suspenders.
 				throw new Error('Either text or memories must be provided');
 			}
-			if (text && memories) {
-				// This case *is* prevented by the `never` type in the union.
-				// If somehow it gets here, it indicates a TS config issue or `any` usage elsewhere.
-				console.warn('Both text and memories were provided to create_omi_memory. Prefer providing only one.');
-				// Decide how to handle this - perhaps prioritize 'memories' or throw an error.
-				// For now, we'll let the API decide or potentially fail if it doesn't support both.
-			}
 
-			const url = `https://api.omi.me/v2/integrations/${appId}/user/memories?uid=${user_id}`;
+			const url = `https://api.omi.me/v2/integrations/${APP_ID}/user/memories?uid=${user_id}`;
 
 			// Construct the body, including only defined fields
-			const body: Record<string, any> = { text_source }; // text_source defaults to 'other' if not in options
+			const body: Record<string, any> = {};
 			if (text) body.text = text;
 			if (memories) body.memories = memories;
+			if (text_source) body.text_source = text_source;
 			if (text_source_spec) body.text_source_spec = text_source_spec;
 
 			const response = await fetch(url, {
 				method: 'POST',
 				headers: {
-					Authorization: `Bearer ${apiKey}`,
+					Authorization: `Bearer ${API_KEY}`,
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify(body),
@@ -286,39 +307,28 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 				throw new Error(`Failed to create memory: ${response.status} ${response.statusText} - ${errorText}`);
 			}
 
-			// Returning an empty JSON string as per the original doc comment.
-			return '{}';
+			return {
+				content: [{ type: 'text', text: '{}' }],
+			};
 		} catch (error) {
 			console.error('Error creating memory:', error);
 			throw new Error(`Failed to create memory: ${error instanceof Error ? error.message : String(error)}`);
 		}
 	}
+);
 
-	/**
-	 * Handles incoming HTTP requests to the Cloudflare Worker.
-	 * This basic implementation uses `ProxyToSelf` to automatically route requests
-	 * to the corresponding public methods of this class based on the request path/method.
-	 * For more complex routing or middleware, this method would need customization.
-	 * @param {Request} request - The incoming HTTP request object.
-	 * @return {Promise<Response>} A Promise resolving to the HTTP Response object to send back.
-	 **/
-	async fetch(request: Request): Promise<Response> {
-		// ProxyToSelf automatically maps request paths/methods to class methods.
-		// Example: A POST request to `/create_omi_conversation` would call `this.create_omi_conversation(...)`.
-		// It likely extracts parameters from the request body or query string based on method signatures.
-		// Refer to `workers-mcp` documentation for exact behavior.
-		console.log(`Incoming request: ${request.method} ${request.url}`);
-		try {
-			const response = await new ProxyToSelf(this).fetch(request);
-			console.log(`Outgoing response status: ${response.status}`);
-			return response;
-		} catch (error) {
-			console.error('Error during request handling in fetch:', error);
-			// Provide a generic error response for unhandled exceptions during routing/proxying
-			return new Response(JSON.stringify({ error: 'Internal worker error during request processing.' }), {
-				status: 500,
-				headers: { 'Content-Type': 'application/json' },
-			});
-		}
+// Main function to start the server
+async function main() {
+	try {
+		// Start receiving messages on stdin and sending messages on stdout
+		const transport = new StdioServerTransport();
+		await server.connect(transport);
+		console.log('MCP server started');
+	} catch (error) {
+		console.error('Error starting MCP server:', error);
+		process.exit(1);
 	}
 }
+
+// Run the main function
+main();

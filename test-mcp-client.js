@@ -13,7 +13,7 @@ const readline = require('readline');
 const TEST_USER_ID = 'test-user-123';
 
 // Start the MCP server process
-const mcpServer = spawn('node', ['./dist/mcp-server.js'], {
+const mcpServer = spawn('node', ['./dist/index.js'], {
 	stdio: ['pipe', 'pipe', process.stderr],
 });
 
