@@ -25,9 +25,6 @@ function log(message: string) {
 	console.log(message); // Also log to console
 }
 
-// User ID for testing
-const USER_ID = 'PIVswRdbkOQimAqwxKTO0oH5EFO2';
-
 // Get API credentials from environment variables
 const API_KEY = process.env.API_KEY || '';
 const APP_ID = process.env.APP_ID || '';
@@ -57,11 +54,11 @@ const server = new McpServer({
 server.tool(
 	'read_omi_conversations',
 	{
-		user_id: z.string().default(USER_ID),
-		limit: z.number().optional(),
-		offset: z.number().optional(),
-		include_discarded: z.boolean().optional(),
-		statuses: z.string().optional(),
+		user_id: z.string().describe('The user ID to fetch conversations for'),
+		limit: z.number().optional().describe('Maximum number of conversations to return (max: 1000, default: 100)'),
+		offset: z.number().optional().describe('Number of conversations to skip for pagination (default: 0)'),
+		include_discarded: z.boolean().optional().describe('Whether to include discarded conversations (default: false)'),
+		statuses: z.string().optional().describe('Comma-separated list of statuses to filter conversations by'),
 	},
 	async ({ user_id, limit, offset, include_discarded, statuses }) => {
 		try {
@@ -133,9 +130,9 @@ server.tool(
 server.tool(
 	'read_omi_memories',
 	{
-		user_id: z.string().default(USER_ID),
-		limit: z.number().optional(),
-		offset: z.number().optional(),
+		user_id: z.string().describe('The user ID to fetch memories for'),
+		limit: z.number().optional().describe('Maximum number of memories to return (max: 1000, default: 100)'),
+		offset: z.number().optional().describe('Number of memories to skip for pagination (default: 0)'),
 	},
 	async ({ user_id, limit, offset }) => {
 		try {
@@ -208,8 +205,8 @@ server.tool(
 server.tool(
 	'create_omi_conversation',
 	{
-		text: z.string(),
-		user_id: z.string().default(USER_ID),
+		text: z.string().describe('The full text content of the conversation'),
+		user_id: z.string().describe('The user ID to create the conversation for'),
 		text_source: z
 			.enum(['audio_transcript', 'message', 'other_text'])
 			.describe('Source of the text content. Required. Options: "audio_transcript", "message", "other_text".'),
@@ -287,7 +284,7 @@ server.tool(
 server.tool(
 	'create_omi_memories',
 	{
-		user_id: z.string().default(USER_ID),
+		user_id: z.string().describe('The user ID to create memories for'),
 		text: z
 			.string()
 			.optional()
