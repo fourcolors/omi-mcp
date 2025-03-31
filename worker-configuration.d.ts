@@ -45,3 +45,21 @@ interface Conversation {
 interface ConversationsResponse {
 	conversations: Conversation[];
 }
+
+interface CreateMemoryOptionsBase {
+	user_id?: string; // Optional, defaults to USER_ID
+	text_source?: 'email' | 'social_post' | 'other';
+	text_source_spec?: string;
+}
+
+interface CreateMemoryWithText extends CreateMemoryOptionsBase {
+	text: string;
+	memories?: never; // Ensure memories is not provided when text is
+}
+
+interface CreateMemoryWithMemories extends CreateMemoryOptionsBase {
+	text?: never; // Ensure text is not provided when memories is
+	memories: Array<{ content: string; tags?: string[] }>;
+}
+
+type CreateMemoryOptions = CreateMemoryWithText | CreateMemoryWithMemories;

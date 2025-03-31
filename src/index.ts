@@ -1,21 +1,7 @@
 import { WorkerEntrypoint } from 'cloudflare:workers';
 import { ProxyToSelf } from 'workers-mcp';
 
-// Define environment variables interface
-interface Env {
-	API_KEY: string;
-	APP_ID: string;
-	SHARED_SECRET: string;
-}
-
 const USER_ID = 'PIVswRdbkOQimAqwxKTO0oH5EFO2';
-
-export interface Memory {
-	id: string;
-	content: string;
-	created_at: string;
-	tags: string[];
-}
 
 export default class OmiWorker extends WorkerEntrypoint<Env> {
 	/**
@@ -25,41 +11,14 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 	 * @param {number} [offset=0] - Number of conversations to skip for pagination (optional, default: 0).
 	 * @param {boolean} [include_discarded=false] - Whether to include discarded conversations (optional, default: false).
 	 * @param {string} [statuses] - Comma-separated list of statuses to filter conversations by (optional).
-	 * @return {Promise<string>} A JSON string containing the array of conversations. Conversations are detailed objects.
-	 *  Example Conversation structure (from documentation):
-	 * {
-	 *   "conversations": [
-	 *     {
-	 *       "id": "conversation_id_1",
-	 *       "created_at": "2024-03-15T12:00:00Z",
-	 *       "started_at": "2024-03-15T12:00:00Z",
-	 *       "finished_at": "2024-03-15T12:05:00Z",
-	 *       "text": "Full conversation text content...",
-	 *       "structured": {
-	 *         "title": "Conversation Title",
-	 *         "overview": "Brief overview of the conversation"
-	 *       },
-	 *       "transcript_segments": [
-	 *         {
-	 *           "text": "Segment text...",
-	 *           "start_time": 0,
-	 *           "end_time": 10
-	 *         }
-	 *       ],
-	 *       "geolocation": {
-	 *         "latitude": 37.7749,
-	 *         "longitude": -122.4194
-	 *       }
-	 *     }
-	 *   ]
-	 * }
+	 * @return {Promise<string>} A JSON string containing the array of conversations.
 	 */
 	async read_omi_conversations(
 		user_id: string = USER_ID,
 		limit?: number,
 		offset?: number,
 		include_discarded?: boolean,
-		statuses?: string
+		statuses?: string,
 	): Promise<string> {
 		try {
 			const apiKey = this.env.API_KEY;
@@ -110,6 +69,7 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 				throw new Error(`Failed to fetch conversations: ${response.status} ${response.statusText} - ${errorText}`);
 			}
 
+			// Assuming the response structure matches ConversationsResponse
 			const data = (await response.json()) as ConversationsResponse;
 			console.log('Data:', data);
 
@@ -128,15 +88,9 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 	 * @param {string} [user_id=USER_ID] - The user ID to fetch memories for (defaults to predefined USER_ID).
 	 * @param {number} [limit=100] - Maximum number of memories to return (optional, max: 1000, default: 100).
 	 * @param {number} [offset=0] - Number of memories to skip for pagination (optional, default: 0).
-	 * @return {Promise<string>} a JSON response containing the array of memories. Memories look like this:
-	 * {
-	 *   "id": "string",
-	 *   "content": "string",
-	 *   "created_at": "string",
-	 *   "tags": ["string"]
-	 * }
+	 * @return {Promise<string>} a JSON response containing the array of memories.
 	 */
-	async read_omi_memories(user_id: string = USER_ID, limit?: number, offset?: number) {
+	async read_omi_memories(user_id: string = USER_ID, limit?: number, offset?: number): Promise<string> {
 		try {
 			// Access environment variables for authentication
 			const apiKey = this.env.API_KEY;
@@ -182,6 +136,7 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 				throw new Error(`Failed to fetch memories: ${response.status} ${response.statusText} - ${errorText}`);
 			}
 
+			// Assuming the response structure matches MemoriesResponse
 			const data = (await response.json()) as MemoriesResponse;
 			console.log('Data:', data);
 			const memories = data.memories || [];
@@ -196,15 +151,17 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 
 	/**
 	 * Create a new conversation in Omi for a specific user.
-	 * @param {string} text - The full text content of the conversation
-	 * @param {string} [user_id=USER_ID] - The user ID to create the conversation for (defaults to predefined USER_ID)
-	 * @param {string} [started_at] - When the conversation started (ISO 8601) - defaults to current time
-	 * @param {string} [finished_at] - When the conversation ended (ISO 8601) - defaults to started_at + 5min
-	 * @param {string} [language="en"] - Language code (e.g., "en" for English)
-	 * @param {Object} [geolocation] - Location data {latitude: number, longitude: number}
-	 * @param {string} [text_source="audio_transcript"] - Source of text content
-	 * @param {string} [text_source_spec] - Additional source specification
-	 * @return {Promise<string>} Empty JSON object on success (e.g., "{}" will be returned when conversation is created successfully)
+	 * @param {string} text - The full text content of the conversation.
+	 * @param {string} [user_id=USER_ID] - The user ID to create the conversation for (defaults to predefined USER_ID).
+	 * @param {string} [started_at] - When the conversation/event started (ISO 8601 format) - defaults to current time if not provided.
+	 * @param {string} [finished_at] - When the conversation/event ended (ISO 8601 format) - defaults to started_at + 5 minutes if not provided.
+	 * @param {string} [language="en"] - Language code (e.g., "en" for English) - defaults to "en" if not provided.
+	 * @param {object} [geolocation] - Location data for the conversation.
+	 * @param {number} [geolocation.latitude] - Latitude coordinate.
+	 * @param {number} [geolocation.longitude] - Longitude coordinate.
+	 * @param {string} [text_source="audio_transcript"] - Source of the text content (options: "audio_transcript", "message", "other_text") - defaults to "audio_transcript".
+	 * @param {string} [text_source_spec] - Additional specification about the source (optional).
+	 * @return {Promise<string>} Empty JSON object on success (e.g., "{}" will be returned when conversation is created successfully).
 	 */
 	async create_omi_conversation(
 		text: string,
@@ -213,8 +170,8 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 		finished_at?: string,
 		language: string = 'en',
 		geolocation?: { latitude: number; longitude: number },
-		text_source: string = 'audio_transcript',
-		text_source_spec?: string
+		text_source: 'audio_transcript' | 'message' | 'other_text' = 'audio_transcript', // Added specific types
+		text_source_spec?: string,
 	): Promise<string> {
 		try {
 			const apiKey = this.env.API_KEY;
@@ -226,15 +183,16 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 
 			const url = `https://api.omi.me/v2/integrations/${appId}/user/conversations?uid=${user_id}`;
 
-			const body = {
+			// Construct the body, only including defined optional parameters
+			const body: Record<string, any> = {
 				text,
-				started_at,
-				finished_at,
 				language,
-				geolocation,
 				text_source,
-				text_source_spec,
 			};
+			if (started_at) body.started_at = started_at;
+			if (finished_at) body.finished_at = finished_at;
+			if (geolocation) body.geolocation = geolocation;
+			if (text_source_spec) body.text_source_spec = text_source_spec;
 
 			const response = await fetch(url, {
 				method: 'POST',
@@ -250,6 +208,8 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 				throw new Error(`Failed to create conversation: ${response.status} ${response.statusText} - ${errorText}`);
 			}
 
+			// Omi API might return an empty body or a specific success object.
+			// Returning an empty JSON string as per the original doc comment.
 			return '{}';
 		} catch (error) {
 			console.error('Error creating conversation:', error);
@@ -258,22 +218,27 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 	}
 
 	/**
-	 * Create new memories in Omi for a specific user. This can be done by either providing text content
-	 * from which memories will be extracted, or by directly specifying memory objects.
-	 * @param {string} [user_id=USER_ID] - The user ID to create memories for (defaults to predefined USER_ID)
-	 * @param {string} [text] - The text content from which memories will be extracted
-	 * @param {Array<{content: string, tags?: string[]}>} [memories] - Array of explicit memory objects to create
-	 * @param {string} [text_source="other"] - Source of text content ("email", "social_post", "other")
-	 * @param {string} [text_source_spec] - Additional source specification
-	 * @return {Promise<string>} Empty JSON object on success (e.g., "{}" will be returned when memories are created successfully)
+	 * Create new memories in Omi for a specific user. Requires either 'text' (for extraction) or 'memories' (for direct creation).
+	 * @param {Object} options - The options object for creating memories. Must contain either 'text' or 'memories'.
+	 * @param {string} [options.user_id] - The user ID to create memories for (defaults to predefined USER_ID).
+	 * @param {string} [options.text] - The text content from which memories will be extracted. Provide this OR 'memories'.
+	 * @param {Array<Object>} [options.memories] - An array of explicit memory objects to be created directly. Provide this OR 'text'.
+	 * @param {string} options.memories[].content - The content of the memory (required if providing 'memories').
+	 * @param {Array<string>} [options.memories[].tags] - Array of tags associated with the memory (optional).
+	 * @param {string} [options.text_source] - Source of the text content (options: "email", "social_post", "other") - defaults to "other".
+	 * @param {string} [options.text_source_spec] - Additional specification about the source (optional).
+	 * @return {Promise<string>} Empty JSON object on success (e.g., "{}" will be returned when memories are created successfully).
 	 */
-	async create_omi_memory(
-		user_id: string = USER_ID,
-		text?: string,
-		memories?: Array<{ content: string; tags?: string[] }>,
-		text_source: string = 'other',
-		text_source_spec?: string
-	): Promise<string> {
+	async create_omi_memory(options: CreateMemoryOptions): Promise<string> {
+		// Destructure options, providing default for user_id and text_source
+		const {
+			user_id = USER_ID,
+			text,
+			memories,
+			text_source = 'other', // Default text_source if not provided
+			text_source_spec,
+		} = options;
+
 		try {
 			const apiKey = this.env.API_KEY;
 			const appId = this.env.APP_ID;
@@ -282,18 +247,26 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 				throw new Error('API_KEY or APP_ID not found in environment variables');
 			}
 
+			// Runtime check (optional but good practice, TypeScript handles compile-time)
 			if (!text && !memories) {
+				// This case should be prevented by the TypeScript types, but belt-and-suspenders.
 				throw new Error('Either text or memories must be provided');
+			}
+			if (text && memories) {
+				// This case *is* prevented by the `never` type in the union.
+				// If somehow it gets here, it indicates a TS config issue or `any` usage elsewhere.
+				console.warn('Both text and memories were provided to create_omi_memory. Prefer providing only one.');
+				// Decide how to handle this - perhaps prioritize 'memories' or throw an error.
+				// For now, we'll let the API decide or potentially fail if it doesn't support both.
 			}
 
 			const url = `https://api.omi.me/v2/integrations/${appId}/user/memories?uid=${user_id}`;
 
-			const body = {
-				text,
-				memories,
-				text_source,
-				text_source_spec,
-			};
+			// Construct the body, including only defined fields
+			const body: Record<string, any> = { text_source }; // text_source defaults to 'other' if not in options
+			if (text) body.text = text;
+			if (memories) body.memories = memories;
+			if (text_source_spec) body.text_source_spec = text_source_spec;
 
 			const response = await fetch(url, {
 				method: 'POST',
@@ -309,6 +282,7 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 				throw new Error(`Failed to create memory: ${response.status} ${response.statusText} - ${errorText}`);
 			}
 
+			// Returning an empty JSON string as per the original doc comment.
 			return '{}';
 		} catch (error) {
 			console.error('Error creating memory:', error);
@@ -317,9 +291,30 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 	}
 
 	/**
-	 * @ignore
+	 * Handles incoming HTTP requests to the Cloudflare Worker.
+	 * This basic implementation uses `ProxyToSelf` to automatically route requests
+	 * to the corresponding public methods of this class based on the request path/method.
+	 * For more complex routing or middleware, this method would need customization.
+	 * @param {Request} request - The incoming HTTP request object.
+	 * @return {Promise<Response>} A Promise resolving to the HTTP Response object to send back.
 	 **/
 	async fetch(request: Request): Promise<Response> {
-		return new ProxyToSelf(this).fetch(request);
+		// ProxyToSelf automatically maps request paths/methods to class methods.
+		// Example: A POST request to `/create_omi_conversation` would call `this.create_omi_conversation(...)`.
+		// It likely extracts parameters from the request body or query string based on method signatures.
+		// Refer to `workers-mcp` documentation for exact behavior.
+		console.log(`Incoming request: ${request.method} ${request.url}`);
+		try {
+			const response = await new ProxyToSelf(this).fetch(request);
+			console.log(`Outgoing response status: ${response.status}`);
+			return response;
+		} catch (error) {
+			console.error('Error during request handling in fetch:', error);
+			// Provide a generic error response for unhandled exceptions during routing/proxying
+			return new Response(JSON.stringify({ error: 'Internal worker error during request processing.' }), {
+				status: 500,
+				headers: { 'Content-Type': 'application/json' },
+			});
+		}
 	}
 }
