@@ -18,7 +18,7 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 		limit?: number,
 		offset?: number,
 		include_discarded?: boolean,
-		statuses?: string,
+		statuses?: string
 	): Promise<string> {
 		try {
 			const apiKey = this.env.API_KEY;
@@ -153,25 +153,25 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 	 * Create a new conversation in Omi for a specific user.
 	 * @param {string} text - The full text content of the conversation.
 	 * @param {string} [user_id=USER_ID] - The user ID to create the conversation for (defaults to predefined USER_ID).
+	 * @param {string} text_source - Required source of the text content (options: "audio_transcript", "message", "other_text").
 	 * @param {string} [started_at] - When the conversation/event started (ISO 8601 format) - defaults to current time if not provided.
 	 * @param {string} [finished_at] - When the conversation/event ended (ISO 8601 format) - defaults to started_at + 5 minutes if not provided.
 	 * @param {string} [language="en"] - Language code (e.g., "en" for English) - defaults to "en" if not provided.
 	 * @param {object} [geolocation] - Location data for the conversation.
 	 * @param {number} [geolocation.latitude] - Latitude coordinate.
 	 * @param {number} [geolocation.longitude] - Longitude coordinate.
-	 * @param {string} [text_source="audio_transcript"] - Source of the text content (options: "audio_transcript", "message", "other_text") - defaults to "audio_transcript".
 	 * @param {string} [text_source_spec] - Additional specification about the source (optional).
 	 * @return {Promise<string>} Empty JSON object on success (e.g., "{}" will be returned when conversation is created successfully).
 	 */
 	async create_omi_conversation(
 		text: string,
 		user_id: string = USER_ID,
+		text_source: 'audio_transcript' | 'message' | 'other_text',
 		started_at?: string,
 		finished_at?: string,
 		language: string = 'en',
 		geolocation?: { latitude: number; longitude: number },
-		text_source: 'audio_transcript' | 'message' | 'other_text' = 'audio_transcript', // Added specific types
-		text_source_spec?: string,
+		text_source_spec?: string
 	): Promise<string> {
 		try {
 			const apiKey = this.env.API_KEY;
@@ -181,14 +181,24 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 				throw new Error('API_KEY or APP_ID not found in environment variables');
 			}
 
+			// Validate required parameters
+			if (!text) {
+				throw new Error('text is required');
+			}
+			if (!text_source) {
+				throw new Error('text_source is required');
+			}
+
 			const url = `https://api.omi.me/v2/integrations/${appId}/user/conversations?uid=${user_id}`;
 
-			// Construct the body, only including defined optional parameters
+			// Construct the body with required parameters
 			const body: Record<string, any> = {
 				text,
-				language,
 				text_source,
+				language,
 			};
+
+			// Add optional parameters only if they are defined
 			if (started_at) body.started_at = started_at;
 			if (finished_at) body.finished_at = finished_at;
 			if (geolocation) body.geolocation = geolocation;
@@ -231,7 +241,7 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 		text?: string,
 		memories?: Array<{ content: string; tags?: string[] }>,
 		text_source?: string,
-		text_source_spec?: string,
+		text_source_spec?: string
 	): Promise<string> {
 		try {
 			const apiKey = this.env.API_KEY;
