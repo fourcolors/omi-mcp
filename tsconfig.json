@@ -10,13 +10,11 @@
 		"jsx": "react-jsx",
 
 		/* Specify what module code is generated. */
-		"module": "es2022",
+		"module": "NodeNext",
 		/* Specify how TypeScript looks up a file from a given module specifier. */
-		"moduleResolution": "Bundler",
+		"moduleResolution": "NodeNext",
 		/* Specify type package names to be included without being referenced in a source file. */
-		"types": [
-			"@cloudflare/workers-types/2023-07-01"
-		],
+		"types": ["@cloudflare/workers-types/2023-07-01"],
 		/* Enable importing .json files */
 		"resolveJsonModule": true,
 
@@ -26,7 +24,11 @@
 		"checkJs": false,
 
 		/* Disable emitting files from a compilation. */
-		"noEmit": true,
+		"noEmit": false,
+		/* Emit output to the dist directory */
+		"outDir": "./dist",
+		/* Generate source maps */
+		"sourceMap": true,
 
 		/* Ensure that each file can be safely transpiled without relying on other imports. */
 		"isolatedModules": true,
