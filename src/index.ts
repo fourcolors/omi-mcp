@@ -1,29 +1,17 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import dotenv from 'dotenv';
-import fs from 'fs';
-import path from 'path';
 import { z } from 'zod';
 import { ConversationsResponse, MemoriesResponse } from './types';
 
-// Load environment variables from .env file
-dotenv.config();
-
-// Set up logging
-const logDir = path.join(process.cwd(), 'logs');
-if (!fs.existsSync(logDir)) {
-	fs.mkdirSync(logDir);
-}
-
-const logFile = path.join(logDir, 'mcp-server.log');
-const logStream = fs.createWriteStream(logFile, { flags: 'a' });
-
+// Define log function
 function log(message: string) {
 	const timestamp = new Date().toISOString();
-	const logMessage = `[${timestamp}] ${message}\n`;
-	logStream.write(logMessage);
-	console.log(message); // Also log to console
+	console.log(`[${timestamp}] ${message}`);
 }
+
+// Load environment variables from .env file
+dotenv.config();
 
 // Get API credentials from environment variables
 const API_KEY = process.env.API_KEY || '';
@@ -361,8 +349,3 @@ async function main() {
 
 // Run the main function
 main();
-
-// Handle cleanup on exit
-process.on('exit', () => {
-	logStream.end();
-});
