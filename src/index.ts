@@ -204,7 +204,7 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 	 * @param {Object} [geolocation] - Location data {latitude: number, longitude: number}
 	 * @param {string} [text_source="audio_transcript"] - Source of text content
 	 * @param {string} [text_source_spec] - Additional source specification
-	 * @return {Promise<string>} Empty JSON object on success
+	 * @return {Promise<string>} Empty JSON object on success (e.g., "{}" will be returned when conversation is created successfully)
 	 */
 	async create_omi_conversation(
 		text: string,
@@ -254,6 +254,65 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 		} catch (error) {
 			console.error('Error creating conversation:', error);
 			throw new Error(`Failed to create conversation: ${error instanceof Error ? error.message : String(error)}`);
+		}
+	}
+
+	/**
+	 * Create new memories in Omi for a specific user. This can be done by either providing text content
+	 * from which memories will be extracted, or by directly specifying memory objects.
+	 * @param {string} [user_id=USER_ID] - The user ID to create memories for (defaults to predefined USER_ID)
+	 * @param {string} [text] - The text content from which memories will be extracted
+	 * @param {Array<{content: string, tags?: string[]}>} [memories] - Array of explicit memory objects to create
+	 * @param {string} [text_source="other"] - Source of text content ("email", "social_post", "other")
+	 * @param {string} [text_source_spec] - Additional source specification
+	 * @return {Promise<string>} Empty JSON object on success (e.g., "{}" will be returned when memories are created successfully)
+	 */
+	async create_omi_memory(
+		user_id: string = USER_ID,
+		text?: string,
+		memories?: Array<{ content: string; tags?: string[] }>,
+		text_source: string = 'other',
+		text_source_spec?: string
+	): Promise<string> {
+		try {
+			const apiKey = this.env.API_KEY;
+			const appId = this.env.APP_ID;
+
+			if (!apiKey || !appId) {
+				throw new Error('API_KEY or APP_ID not found in environment variables');
+			}
+
+			if (!text && !memories) {
+				throw new Error('Either text or memories must be provided');
+			}
+
+			const url = `https://api.omi.me/v2/integrations/${appId}/user/memories?uid=${user_id}`;
+
+			const body = {
+				text,
+				memories,
+				text_source,
+				text_source_spec,
+			};
+
+			const response = await fetch(url, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${apiKey}`,
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(body),
+			});
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				throw new Error(`Failed to create memory: ${response.status} ${response.statusText} - ${errorText}`);
+			}
+
+			return '{}';
+		} catch (error) {
+			console.error('Error creating memory:', error);
+			throw new Error(`Failed to create memory: ${error instanceof Error ? error.message : String(error)}`);
 		}
 	}
 
