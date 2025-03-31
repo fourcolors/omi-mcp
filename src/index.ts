@@ -219,26 +219,20 @@ export default class OmiWorker extends WorkerEntrypoint<Env> {
 
 	/**
 	 * Create new memories in Omi for a specific user. Requires either 'text' (for extraction) or 'memories' (for direct creation).
-	 * @param {Object} options - The options object for creating memories. Must contain either 'text' or 'memories'.
-	 * @param {string} [options.user_id] - The user ID to create memories for (defaults to predefined USER_ID).
-	 * @param {string} [options.text] - The text content from which memories will be extracted. Provide this OR 'memories'.
-	 * @param {Array<Object>} [options.memories] - An array of explicit memory objects to be created directly. Provide this OR 'text'.
-	 * @param {string} options.memories[].content - The content of the memory (required if providing 'memories').
-	 * @param {Array<string>} [options.memories[].tags] - Array of tags associated with the memory (optional).
-	 * @param {string} [options.text_source] - Source of the text content (options: "email", "social_post", "other") - defaults to "other".
-	 * @param {string} [options.text_source_spec] - Additional specification about the source (optional).
+	 * @param {string} [user_id=USER_ID] - The user ID to create memories for (defaults to predefined USER_ID).
+	 * @param {string} [text] - The text content from which memories will be extracted. Provide this OR 'memories'.
+	 * @param {Array<Object>} [memories] - An array of explicit memory objects to be created directly. Provide this OR 'text'.
+	 * @param {string} [text_source="other"] - Source of the text content (options: "email", "social_post", "other") - defaults to "other".
+	 * @param {string} [text_source_spec] - Additional specification about the source (optional).
 	 * @return {Promise<string>} Empty JSON object on success (e.g., "{}" will be returned when memories are created successfully).
 	 */
-	async create_omi_memory(options: CreateMemoryOptions): Promise<string> {
-		// Destructure options, providing default for user_id and text_source
-		const {
-			user_id = USER_ID,
-			text,
-			memories,
-			text_source = 'other', // Default text_source if not provided
-			text_source_spec,
-		} = options;
-
+	async create_omi_memories(
+		user_id: string = USER_ID,
+		text?: string,
+		memories?: Array<{ content: string; tags?: string[] }>,
+		text_source: string = 'other',
+		text_source_spec?: string,
+	): Promise<string> {
 		try {
 			const apiKey = this.env.API_KEY;
 			const appId = this.env.APP_ID;
