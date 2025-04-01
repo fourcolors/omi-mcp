@@ -1,0 +1,31 @@
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+
+startCommand:
+  type: stdio
+  configSchema:
+    # JSON Schema defining the configuration options for the MCP.
+    type: object
+    required:
+      - apiKey
+      - appId
+    properties:
+      apiKey:
+        type: string
+        description: API key for Omi's API
+      appId:
+        type: string
+        description: Application ID for Omi's API
+  commandFunction:
+    # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
+    |-
+    (config) => ({
+      command: 'node',
+      args: ['--enable-source-maps', './dist/index.js'],
+      env: {
+        API_KEY: config.apiKey,
+        APP_ID: config.appId
+      }
+    })
+  exampleConfig:
+    apiKey: dummy_api_key
+    appId: dummy_app_id
