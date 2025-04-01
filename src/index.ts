@@ -73,6 +73,7 @@ const server = new McpServer({
  */
 server.tool(
 	'read_omi_conversations',
+	'Retrieves user conversations from Omi with pagination and filtering options',
 	{
 		user_id: z.string().describe('The user ID to fetch conversations for'),
 		limit: z.number().optional().describe('Maximum number of conversations to return (max: 1000, default: 100)'),
@@ -149,6 +150,7 @@ server.tool(
  */
 server.tool(
 	'read_omi_memories',
+	'Retrieves user memories from Omi with pagination options',
 	{
 		user_id: z.string().describe('The user ID to fetch memories for'),
 		limit: z.number().optional().describe('Maximum number of memories to return (max: 1000, default: 100)'),
@@ -224,6 +226,7 @@ server.tool(
  */
 server.tool(
 	'create_omi_conversation',
+	'Creates a new Omi conversation with text content and metadata',
 	{
 		text: z.string().describe('The full text content of the conversation'),
 		user_id: z.string().describe('The user ID to create the conversation for'),
@@ -303,9 +306,10 @@ server.tool(
  */
 server.tool(
 	'create_omi_memories',
+	'Creates Omi memories by extracting from text or using explicit memory objects',
 	{
 		user_id: z.string().describe('The user ID to create memories for'),
-		text: z.string().describe('The text content from which memories will be extracted. Either this or memories must be provided.'),
+		text: z.string().optional().describe('The text content from which memories will be extracted. Either this or memories must be provided.'),
 		memories: z
 			.array(
 				z.object({
@@ -315,7 +319,7 @@ server.tool(
 			)
 			.optional()
 			.describe('An array of explicit memory objects to be created directly. Either this or text must be provided.'),
-		text_source: z.string().optional().describe('Source of the text content. Optional. Options: "email", "social_post", "other".'),
+		text_source: z.enum(['email', 'social_post', 'other']).optional().describe('Source of the text content. Optional. Options: "email", "social_post", "other".'),
 		text_source_spec: z.string().optional().describe('Additional specification about the source. Optional.'),
 	},
 	async ({ user_id, text, memories, text_source, text_source_spec }) => {

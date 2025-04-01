@@ -33,3 +33,6 @@
 - Use the custom log function for all logging
 - Include timestamps in log messages
 - Log both to stderr and log file
+
+## Package Management
+- Always use pnpm instead of npm in this project
