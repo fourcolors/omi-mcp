@@ -1,4 +1,5 @@
 # Omi MCP Server
+[![smithery badge](https://smithery.ai/badge/@fourcolors/omi-mcp)](https://smithery.ai/server/@fourcolors/omi-mcp)
 
 This project provides a Model Context Protocol (MCP) server for interacting with the Omi API. The server provides tools for reading conversations and memories, as well as creating new conversations and memories.
 
@@ -13,6 +14,14 @@ This project provides a Model Context Protocol (MCP) server for interacting with
    ```
 
 ## Usage
+
+### Installing via Smithery
+
+To install Omi MCP Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@fourcolors/omi-mcp):
+
+```bash
+npx -y @smithery/cli install @fourcolors/omi-mcp --client claude
+```
 
 ### Building the Server
 
